@@ -15,14 +15,53 @@ class RODController extends Controller
      */
     public function index()
     {
-        ini_set('max_execution_time', 180);
-        ini_set('memory_limit', '512M');
-        // $contents = Storage::get("test.txt");
-        $contents = Storage::get("RR104844.txt");
+        $rodData = ROD::all();
+        // $rodData = ROD::paginate(100);
+        // return response()->json($rodData);
+        // dd($rodData);
+        return view('rod.index', compact('rodData'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        return view('rod.create');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        // Validate (size is in KB)
+        $request->validate([
+            'rod_file' => 'required',
+        ]);
+
+        // Read file contents...
+        $contents = file_get_contents($request->rod_file->path());
+        // dd($contents);
+
+        // ...or just move it somewhere else (eg: local `storage` directory or S3)
+        // $newPath = $request->rod_file->store('rod_file', 's3');
+
         $rawArray = explode("\n", $contents);
+        unset($rawArray[count($rawArray) - 1]);  // remove last empty row 
+        $lastArray = end($rawArray);
+
+        // print_r($lastArray);
+        // dd($lastArray);
 
 
-        // print_r($rawArray);
+        unset($rawArray[count($rawArray) - 1]);  // remove last line summary row 
+
         $finalArray = [];
         foreach ($rawArray as $key => $raw) {
             $finalArray[$key]['investor_id'] = preg_replace('/\s\s+/', '', substr($raw, 0, 14));
@@ -51,35 +90,9 @@ class RODController extends Controller
             $finalArray[$key]['rejection_codes'] = preg_replace('/\s\s+/', '', substr($raw, 441, 19));
             $finalArray[$key]['old_investor_id'] = preg_replace('/\s\s+/', '', substr($raw, 460, 8));
         }
-        // echo "<pre/>";
-        // dd($finalArray);
-
         foreach (array_chunk($finalArray, 500) as $smallArray) {
             ROD::insert($smallArray);
         }
-
-        return view('rod.index');
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
     }
 
     /**
